@@ -46,7 +46,7 @@ export function SignupForm() {
       if (error) {
         setError(error.message)
       } else {
-        router.push("/login?message=Check your email to confirm your account")
+        router.push("/?message=Check your email to confirm your account")
       }
     } catch (err) {
       setError("An error occurred. Please try again.")

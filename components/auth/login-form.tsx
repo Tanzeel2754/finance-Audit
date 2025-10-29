@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createBrowserClient } from "@supabase/ssr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,8 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const infoMessage = searchParams.get("message")
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -52,6 +54,7 @@ export function LoginForm() {
         <CardDescription>Manage your accounts and transactions</CardDescription>
       </CardHeader>
       <CardContent>
+        {infoMessage && <p className="text-sm text-primary mb-3">{infoMessage}</p>}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="text-sm font-medium">Email</label>
