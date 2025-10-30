@@ -1,9 +1,10 @@
 "use client"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import { useRouter } from "next/navigation"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +15,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 
 interface Transaction {
   id: string
@@ -83,6 +97,54 @@ export function TransactionsList({ transactions, initialBalance, currentBalance 
     return () => window.removeEventListener("exportCSV", handleExportCSV)
   }, [transactions])
 
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const allSelected = transactions.length > 0 && selected.size === transactions.length
+  const someSelected = selected.size > 0 && selected.size < transactions.length
+
+  const toggleAll = (checked: boolean) => {
+    if (checked) {
+      setSelected(new Set(transactions.map((t) => t.id)))
+    } else {
+      setSelected(new Set())
+    }
+  }
+
+  const toggleOne = (id: string, checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>, id: string) => {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const transaction_date = (fd.get("transaction_date") as string) || ""
+    const transaction_type = (fd.get("transaction_type") as string) || ""
+    const category = (fd.get("category") as string) || ""
+    const description = (fd.get("description") as string) || ""
+    const amountStr = (fd.get("amount") as string) || "0"
+    const payment_methodRaw = (fd.get("payment_method") as string) || ""
+
+    const updates: Partial<Transaction> = {
+      transaction_date,
+      transaction_type,
+      category,
+      description,
+      amount: Math.abs(parseFloat(amountStr)),
+      payment_method: payment_methodRaw || undefined,
+    }
+
+    const { error } = await supabase.from("transactions").update(updates).eq("id", id)
+    if (!error) {
+      router.refresh()
+      const closeBtn = document.getElementById(`close-edit-${id}`) as HTMLButtonElement | null
+      closeBtn?.click()
+    }
+  }
+
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("transactions").delete().eq("id", id)
 
@@ -105,6 +167,7 @@ export function TransactionsList({ transactions, initialBalance, currentBalance 
       alert("No transactions to export")
       return
     }
+    const toExport = selected.size > 0 ? transactions.filter((t) => selected.has(t.id)) : transactions
     const headers = [
       "Date",
       "Type",
@@ -115,7 +178,7 @@ export function TransactionsList({ transactions, initialBalance, currentBalance 
       "Initial Balance",
       "Current Balance",
     ]
-    const rows = transactions.map((t) => [
+    const rows = toExport.map((t) => [
       t.transaction_date.slice(0, 10),
       t.transaction_type,
       t.category,
@@ -163,7 +226,8 @@ export function TransactionsList({ transactions, initialBalance, currentBalance 
       "Initial Balance",
       "Current Balance",
     ]
-    const rows = transactions
+    const toExport = selected.size > 0 ? transactions.filter((t) => selected.has(t.id)) : transactions
+    const rows = toExport
       .map((t) => {
         return `
           <tr>
@@ -215,6 +279,14 @@ export function TransactionsList({ transactions, initialBalance, currentBalance 
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-10">
+              <Checkbox
+                checked={someSelected ? "indeterminate" : allSelected}
+                onCheckedChange={(checked) => toggleAll(Boolean(checked))}
+                aria-label="Select all"
+              />
+            </TableHead>
+            <TableHead>ID</TableHead>
             <TableHead>Date</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Category</TableHead>
@@ -229,6 +301,16 @@ export function TransactionsList({ transactions, initialBalance, currentBalance 
         <TableBody>
           {transactions.map((transaction) => (
             <TableRow key={transaction.id}>
+              <TableCell className="w-10">
+                <Checkbox
+                  checked={selected.has(transaction.id)}
+                  onCheckedChange={(checked) => toggleOne(transaction.id, Boolean(checked))}
+                  aria-label={`Select transaction ${transaction.id}`}
+                />
+              </TableCell>
+              <TableCell className="font-mono text-xs" title={transaction.id}>
+                {transaction.id.slice(0, 5)}
+              </TableCell>
               <TableCell>{formatDate(transaction.transaction_date)}</TableCell>
               <TableCell>
                 <span
@@ -255,28 +337,115 @@ export function TransactionsList({ transactions, initialBalance, currentBalance 
               <TableCell>{initialBalance.toFixed(2)}</TableCell>
               <TableCell>{currentBalance.toFixed(2)}</TableCell>
               <TableCell>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm">
-                      Delete
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete this transaction? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => handleDelete(transaction.id)}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <div className="flex items-center gap-2">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">Edit</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Edit Transaction</DialogTitle>
+                        <DialogDescription>Update the fields and save your changes.</DialogDescription>
+                      </DialogHeader>
+                      <form className="space-y-3" onSubmit={(e) => handleEditSubmit(e, transaction.id)}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`date-${transaction.id}`}>Date</Label>
+                            <Input
+                              id={`date-${transaction.id}`}
+                              name="transaction_date"
+                              type="date"
+                              defaultValue={transaction.transaction_date?.slice(0, 10)}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`type-${transaction.id}`}>Type</Label>
+                            <select
+                              id={`type-${transaction.id}`}
+                              name="transaction_type"
+                              defaultValue={transaction.transaction_type}
+                              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <option value="income">Income</option>
+                              <option value="expense">Expense</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`category-${transaction.id}`}>Category</Label>
+                            <Input
+                              id={`category-${transaction.id}`}
+                              name="category"
+                              type="text"
+                              defaultValue={transaction.category}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`amount-${transaction.id}`}>Amount</Label>
+                            <Input
+                              id={`amount-${transaction.id}`}
+                              name="amount"
+                              type="number"
+                              step="0.01"
+                              defaultValue={transaction.amount}
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`method-${transaction.id}`}>Payment Method</Label>
+                          <Input
+                            id={`method-${transaction.id}`}
+                            name="payment_method"
+                            type="text"
+                            defaultValue={transaction.payment_method || ""}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`description-${transaction.id}`}>Description</Label>
+                          <Textarea
+                            id={`description-${transaction.id}`}
+                            name="description"
+                            defaultValue={transaction.description || ""}
+                            rows={3}
+                          />
+                        </div>
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <button id={`close-edit-${transaction.id}`} className="hidden" />
+                          </DialogClose>
+                          <DialogClose asChild>
+                            <Button type="button" variant="outline">Cancel</Button>
+                          </DialogClose>
+                          <Button type="submit">Save Changes</Button>
+                        </DialogFooter>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm">
+                        Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this transaction? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDelete(transaction.id)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </TableCell>
             </TableRow>
           ))}

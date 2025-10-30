@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { TransactionsList } from "./transactions-list"
 import { AddTransactionDialog } from "./add-transaction-dialog"
 import { TransactionFilters } from "./transaction-filters"
@@ -49,6 +50,11 @@ export function AccountDetails({ account, transactions }: AccountDetailsProps) {
     if (dateRange.to && transDate > new Date(dateRange.to)) return false
     return true
   })
+
+  const [searchId, setSearchId] = useState("")
+  const filteredBySearch = filteredTransactions.filter((t) =>
+    searchId.trim() === "" ? true : t.id.toLowerCase().includes(searchId.trim().toLowerCase()),
+  )
 
   const income = filteredTransactions
     .filter((t) => t.transaction_type === "income")
@@ -107,15 +113,25 @@ export function AccountDetails({ account, transactions }: AccountDetailsProps) {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Transactions</CardTitle>
-          <CardDescription>All transactions for this account</CardDescription>
+        <CardHeader className="gap-2 sm:flex sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>Transactions</CardTitle>
+            <CardDescription>All transactions for this account</CardDescription>
+          </div>
+          <div className="w-full sm:w-auto">
+            <Input
+              value={searchId}
+              onChange={(e) => setSearchId(e.target.value)}
+              placeholder="Search by transaction ID"
+              className="sm:w-72"
+            />
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <TransactionFilters dateRange={dateRange} onDateRangeChange={setDateRange} />
           <TransactionsList
             key={refreshKey}
-            transactions={filteredTransactions}
+            transactions={filteredBySearch}
             initialBalance={account.current_balance}
             currentBalance={computedBalance}
           />
