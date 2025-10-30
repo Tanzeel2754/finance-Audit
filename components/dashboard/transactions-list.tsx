@@ -27,9 +27,11 @@ interface Transaction {
 
 interface TransactionsListProps {
   transactions: Transaction[]
+  initialBalance: number
+  currentBalance: number
 }
 
-export function TransactionsList({ transactions }: TransactionsListProps) {
+export function TransactionsList({ transactions, initialBalance, currentBalance }: TransactionsListProps) {
   const router = useRouter()
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,14 +45,25 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
         return
       }
 
-      const headers = ["Date", "Type", "Category", "Description", "Amount", "Payment Method"]
+      const headers = [
+        "Date",
+        "Type",
+        "Category",
+        "Description",
+        "Amount",
+        "Payment Method",
+        "Initial Balance",
+        "Current Balance",
+      ]
       const rows = transactions.map((t) => [
-        new Date(t.transaction_date).toLocaleDateString(),
+        t.transaction_date.slice(0, 10),
         t.transaction_type,
         t.category,
         t.description,
         t.amount.toFixed(2),
         t.payment_method || "",
+        initialBalance.toFixed(2),
+        currentBalance.toFixed(2),
       ])
 
       const csvContent = [headers.join(","), ...rows.map((row) => row.map((cell) => `"${cell}"`).join(","))].join("\n")
@@ -82,6 +95,11 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
     return <p className="text-muted-foreground text-center py-8">No transactions yet</p>
   }
 
+  const formatDate = (value: string) => {
+    if (!value) return ""
+    return value.slice(0, 10)
+  }
+
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -93,13 +111,15 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
             <TableHead>Description</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Method</TableHead>
+            <TableHead>Initial Balance</TableHead>
+            <TableHead>Current Balance</TableHead>
             <TableHead>Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {transactions.map((transaction) => (
             <TableRow key={transaction.id}>
-              <TableCell>{new Date(transaction.transaction_date).toLocaleDateString()}</TableCell>
+              <TableCell>{formatDate(transaction.transaction_date)}</TableCell>
               <TableCell>
                 <span
                   className={`px-2 py-1 rounded text-xs font-medium ${
@@ -122,6 +142,8 @@ export function TransactionsList({ transactions }: TransactionsListProps) {
                 {transaction.amount.toFixed(2)}
               </TableCell>
               <TableCell className="capitalize">{transaction.payment_method}</TableCell>
+              <TableCell>{initialBalance.toFixed(2)}</TableCell>
+              <TableCell>{currentBalance.toFixed(2)}</TableCell>
               <TableCell>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

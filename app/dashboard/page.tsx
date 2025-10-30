@@ -40,6 +40,23 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
+  const { data: transactions } = await supabase
+    .from("transactions")
+    .select("account_id, transaction_type, amount")
+    .eq("user_id", user.id)
+
+  const computedBalances: Record<string, number> = {}
+  ;(accounts || []).forEach((acc) => {
+    const accTx = (transactions || []).filter((t) => t.account_id === acc.id)
+    const income = accTx
+      .filter((t) => t.transaction_type === "income")
+      .reduce((sum, t) => sum + (t.amount || 0), 0)
+    const expenses = accTx
+      .filter((t) => t.transaction_type === "expense")
+      .reduce((sum, t) => sum + (t.amount || 0), 0)
+    computedBalances[acc.id] = (acc.current_balance || 0) + income - expenses
+  })
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader user={user} />
@@ -51,7 +68,7 @@ export default async function DashboardPage() {
           </div>
           <CreateAccountDialog />
         </div>
-        <AccountsList accounts={accounts || []} />
+        <AccountsList accounts={accounts || []} computedBalances={computedBalances} />
       </main>
     </div>
   )

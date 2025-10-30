@@ -58,6 +58,8 @@ export function AccountDetails({ account, transactions }: AccountDetailsProps) {
     .filter((t) => t.transaction_type === "expense")
     .reduce((sum, t) => sum + t.amount, 0)
 
+  const computedBalance = account.current_balance + income - expenses
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-start">
@@ -78,7 +80,7 @@ export function AccountDetails({ account, transactions }: AccountDetailsProps) {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">
-              {account.currency} {account.current_balance.toFixed(2)}
+              {account.currency} {computedBalance.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -111,7 +113,12 @@ export function AccountDetails({ account, transactions }: AccountDetailsProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <TransactionFilters dateRange={dateRange} onDateRangeChange={setDateRange} />
-          <TransactionsList key={refreshKey} transactions={filteredTransactions} />
+          <TransactionsList
+            key={refreshKey}
+            transactions={filteredTransactions}
+            initialBalance={account.current_balance}
+            currentBalance={computedBalance}
+          />
         </CardContent>
       </Card>
     </div>

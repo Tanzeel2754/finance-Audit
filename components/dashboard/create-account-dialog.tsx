@@ -146,6 +146,8 @@ export function CreateAccountDialog() {
                 <SelectItem value="GBP">GBP (£)</SelectItem>
                 <SelectItem value="INR">INR (₹)</SelectItem>
                 <SelectItem value="JPY">JPY (¥)</SelectItem>
+                <SelectItem value="AED">AED (د.إ)</SelectItem>
+                <SelectItem value="PKR">PKR (₨)</SelectItem>
               </SelectContent>
             </Select>
           </div>

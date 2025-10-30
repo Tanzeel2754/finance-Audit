@@ -14,9 +14,10 @@ interface Account {
 
 interface AccountsListProps {
   accounts: Account[]
+  computedBalances?: Record<string, number>
 }
 
-export function AccountsList({ accounts }: AccountsListProps) {
+export function AccountsList({ accounts, computedBalances }: AccountsListProps) {
   if (accounts.length === 0) {
     return (
       <Card>
@@ -40,7 +41,11 @@ export function AccountsList({ accounts }: AccountsListProps) {
               <div className="space-y-2">
                 {account.bank_name && <p className="text-sm text-muted-foreground">{account.bank_name}</p>}
                 <p className="text-2xl font-bold">
-                  {account.currency} {account.current_balance.toFixed(2)}
+                  {account.currency}{" "}
+                  {(computedBalances && computedBalances[account.id] !== undefined
+                    ? computedBalances[account.id]
+                    : account.current_balance
+                  ).toFixed(2)}
                 </p>
               </div>
             </CardContent>

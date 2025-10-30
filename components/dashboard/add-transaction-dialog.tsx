@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createBrowserClient } from "@supabase/ssr"
 import { Button } from "@/components/ui/button"
@@ -55,6 +55,19 @@ export function AddTransactionDialog({ accountId, onTransactionAdded }: AddTrans
   const incomeCategories = ["salary", "freelance", "investment", "bonus", "other"]
 
   const categories = formData.transaction_type === "income" ? incomeCategories : expenseCategories
+
+  useEffect(() => {
+    if (formData.transaction_type === "income") {
+      if (!incomeCategories.includes(formData.category)) {
+        setFormData((prev) => ({ ...prev, category: "salary" }))
+      }
+    } else {
+      if (!expenseCategories.includes(formData.category)) {
+        setFormData((prev) => ({ ...prev, category: "food" }))
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.transaction_type])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -114,15 +127,15 @@ export function AddTransactionDialog({ accountId, onTransactionAdded }: AddTrans
             <Select
               value={formData.transaction_type}
               onValueChange={(value) =>
-                setFormData({
-                  ...formData,
+                (console.log("Type change:", value),
+                setFormData((prev) => ({
+                  ...prev,
                   transaction_type: value,
-                  category: value === "income" ? "salary" : "food",
-                })
+                })))
               }
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="income">Income</SelectItem>
