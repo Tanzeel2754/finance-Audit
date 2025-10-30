@@ -100,8 +100,118 @@ export function TransactionsList({ transactions, initialBalance, currentBalance 
     return value.slice(0, 10)
   }
 
+  const exportCSV = () => {
+    if (transactions.length === 0) {
+      alert("No transactions to export")
+      return
+    }
+    const headers = [
+      "Date",
+      "Type",
+      "Category",
+      "Description",
+      "Amount",
+      "Payment Method",
+      "Initial Balance",
+      "Current Balance",
+    ]
+    const rows = transactions.map((t) => [
+      t.transaction_date.slice(0, 10),
+      t.transaction_type,
+      t.category,
+      t.description,
+      t.amount.toFixed(2),
+      t.payment_method || "",
+      initialBalance.toFixed(2),
+      currentBalance.toFixed(2),
+    ])
+    const csvContent = [headers.join(","), ...rows.map((row) => row.map((cell) => `"${cell}"`).join(","))].join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `transactions-${new Date().toISOString().split("T")[0]}.csv`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const exportPDF = () => {
+    if (transactions.length === 0) {
+      alert("No transactions to export")
+      return
+    }
+    const win = window.open("", "_blank")
+    if (!win) return
+    const styles = `
+      <style>
+        body { font-family: Arial, sans-serif; padding: 16px; }
+        h1 { font-size: 18px; margin-bottom: 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ccc; padding: 8px; font-size: 12px; text-align: left; }
+        th { background: #f5f5f5; }
+      </style>
+    `
+    const header = [
+      "Date",
+      "Type",
+      "Category",
+      "Description",
+      "Amount",
+      "Method",
+      "Initial Balance",
+      "Current Balance",
+    ]
+    const rows = transactions
+      .map((t) => {
+        return `
+          <tr>
+            <td>${formatDate(t.transaction_date)}</td>
+            <td>${t.transaction_type}</td>
+            <td>${t.category}</td>
+            <td>${t.description || ""}</td>
+            <td>${t.amount.toFixed(2)}</td>
+            <td>${t.payment_method || ""}</td>
+            <td>${initialBalance.toFixed(2)}</td>
+            <td>${currentBalance.toFixed(2)}</td>
+          </tr>
+        `
+      })
+      .join("")
+    const html = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          ${styles}
+          <title>Transactions Export</title>
+        </head>
+        <body>
+          <h1>Transactions</h1>
+          <table>
+            <thead>
+              <tr>${header.map((h) => `<th>${h}</th>`).join("")}</tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+          <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 300); }<\/script>
+        </body>
+      </html>
+    `
+    win.document.open()
+    win.document.write(html)
+    win.document.close()
+  }
+
   return (
     <div className="overflow-x-auto">
+      <div className="flex justify-end gap-2 mb-2">
+        <Button variant="outline" size="sm" onClick={exportCSV}>Export CSV</Button>
+        <Button variant="outline" size="sm" onClick={exportPDF}>Export PDF</Button>
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
